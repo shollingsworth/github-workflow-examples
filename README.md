@@ -1,4 +1,4 @@
-# laughing-octo-telegram
+# Github Workflow / Action Example Repository
 
 My Github action experiments and testing
 
