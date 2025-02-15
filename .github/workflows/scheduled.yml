@@ -96,4 +96,5 @@ jobs:
         id: send_slack
         uses: ./.github/actions/send_slack
         with:
+          webhook: ${{ secrets.SLACK_WEBHOOK }}
           payload_file: ${{ env.PAYLOAD_FILE}}

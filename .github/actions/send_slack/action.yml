@@ -3,6 +3,9 @@ name: Send Slack Webhook
 description: Send Slack Webhook
 
 inputs:
+  slack_webhook:
+    description: Slack webhook url
+    required: true
   payload_file:
     description: >-
       Slack webhook payload in json format
@@ -18,8 +21,9 @@ runs:
       id: webhook_result
       env:
         PAYLOAD_FILE: ${{ inputs.payload_file }}
+        SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
       run: |
         curl -X POST \
           -H 'Content-type: application/json' \
           --data "@${PAYLOAD_FILE} \
-          ${{ secrets.SLACK_WEBHOOK }}
+          "${SLACK_WEBHOOK}"
