@@ -19,4 +19,4 @@ jobs:
 
       - name: Check workflow files
         run: |
-          actionlint -color -verbose
+          "${HOME}/go/bin/actionlint" -color -verbose
