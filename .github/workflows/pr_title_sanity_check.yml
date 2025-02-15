@@ -17,7 +17,7 @@ on:
       - unlabeled
 
 env:
-  PR_PREFIX: "FOO-"
+  PR_PREFIX: "FOO"
 
 jobs:
   pr_validation:
@@ -45,7 +45,8 @@ jobs:
             echo -ne "FAIL: title '${TITLE}' "
             echo -ne "does not start have the format ${PR_PREFIX}-XXXX: \n"
             echo -ne "Be sure to make sure it's all capitalized"
-            echo -ne "i.e. '${PR_PREFIX}-555: - Lorem ipsum dolor sit amet...'\n"
+            echo -ne \
+              "i.e. '${PR_PREFIX}-555: - Lorem ipsum dolor sit amet...'\n"
           fi
           if [[ "${FAIL_CNT}" -ne 0 ]]; then
             echo -ne "Title:\n${TITLE}\n"
