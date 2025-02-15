@@ -24,6 +24,8 @@ jobs:
       - name: get job id
         id: job_id
         uses: ./.github/actions/get_job_id
+        with:
+          gh_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set Env
         id: set_env
