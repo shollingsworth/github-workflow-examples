@@ -32,9 +32,12 @@ jobs:
         env:
           JOB_ID: ${{ steps.job_id.outputs.job_id }}
           JOB_URL: ${{ steps.job_id.outputs.job_url }}
-          # see https://app.slack.com/block-kit-builder
+          PAYLOAD_FILE_PREFIX: /tmp/slack_payload
+        # see https://app.slack.com/block-kit-builder
         run: |
+          DT="$(date "+%s")"
           section_txt=$(cat <<EOF | jq -r -R -s '@json'
+          pl_file="${PAYLOAD_FILE_PREFIX}_${DT}.json"
           <${JOB_URL}|Job Run: ${JOB_ID}>
           This is a mrkdwn section
           block :ghost:
@@ -43,8 +46,7 @@ jobs:
           EOF
           )
           # section_txt is intentionally left unquoted
-          payload=$(
-          cat <<EOF | tee test.json | jq -r .
+          cat <<EOF | jq -r . > "${pl_file}"
           {
             "blocks": [
               {
@@ -68,13 +70,16 @@ jobs:
             ]
           }
           EOF
-          )
+          echo "Payload contents:"
+          echo "-------------------------------"
+          cat "${pl_file}"
+
           cat <<EOF | tee -a  "$GITHUB_OUTPUT" "$GITHUB_ENV"
-          PAYLOAD=${payload}
+          PAYLOAD_FILE=${pl_file}
           EOF
 
       - name: Send slack alert
         id: send_slack
         uses: ./.github/actions/send_slack
         with:
-          payload_json: ${{ env.PAYLOAD }}
+          payload_file: ${{ env.PAYLOAD_FILE}}

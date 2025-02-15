@@ -3,38 +3,23 @@ name: Send Slack Webhook
 description: Send Slack Webhook
 
 inputs:
-  payload_json:
+  payload_file:
     description: >-
-      Slack webhook payload in json
+      Slack webhook payload in json format
       see https://app.slack.com/block-kit-builder
-      example payload '{"text":"Hello, World!"}'
+      example payload file contents '{"text":"Hello, World!"}'
     required: true
 
 runs:
   using: "composite"
   steps:
-    - name: Set Env / Test JSON
-      shell: bash
-      id: test_json
-      env:
-        PAYLOAD: ${{ inputs.payload_json }}
-      run: |
-        echo "${PAYLOAD}" | jq . || {
-          echo "Invalid JSON payload"
-          echo "${PAYLOAD}"
-          exit 1
-        }
-        cat <<EOF | tee -a  "$GITHUB_OUTPUT" "$GITHUB_ENV"
-        PAYLOAD=${PAYLOAD}
-        EOF
-
-        pip install requests
-
     - name: Send webhook
       shell: bash
       id: webhook_result
+      env:
+        PAYLOAD_FILE: ${{ inputs.payload_file }}
       run: |
         curl -X POST \
           -H 'Content-type: application/json' \
-          --data "${PAYLOAD}" \
+          --data "@${PAYLOAD_FILE} \
           ${{ secrets.SLACK_WEBHOOK }}
