@@ -2,6 +2,14 @@
 name: Get workflow run job id
 description: Get workflow run job id
 
+inputs:
+  gh_token:
+    # this needs to be passed to action.yml jobs
+    # These variables are not available in "composite"
+    # actions
+    description: Github token
+    required: true
+
 outputs:
   job_id:
     description: "github workflow run job id"
@@ -17,12 +25,12 @@ runs:
       id: job_id
       shell: bash
       env:
+        GH_TOKEN: ${{ inputs.gh_token }}
         REPO: ${{ github.repository }}
         RUN_ID: ${{ github.run_id}}
         ATT: ${{ github.run_attempt }}
         RUNNER_NAME: ${{ runner.name }}
       run: |
-        export GH_TOKEN=${GITHUB_TOKEN}
         url="repos/${REPO}/actions/runs/${RUN_ID}/attempts/${ATT}/jobs"
         jobs=$(gh api "${url}")
         echo
