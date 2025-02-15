@@ -24,6 +24,6 @@ runs:
         SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
       run: |
         curl -X POST \
-          -H 'Content-type: application/json' \
-          --data "@${PAYLOAD_FILE} \
+          -H "Content-type: application/json" \
+          --data "@${PAYLOAD_FILE}" \
           "${SLACK_WEBHOOK}"
