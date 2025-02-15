@@ -46,7 +46,9 @@ jobs:
           EOF
           )
           # section_txt is intentionally left unquoted
-          cat <<EOF | jq -r . > "${pl_file}"
+          echo "Payload contents:"
+          echo "-------------------------------"
+          cat <<EOF | jq -r . | tee "${pl_file}"
           {
             "blocks": [
               {
@@ -70,9 +72,6 @@ jobs:
             ]
           }
           EOF
-          echo "Payload contents:"
-          echo "-------------------------------"
-          cat "${pl_file}"
 
           cat <<EOF | tee -a  "$GITHUB_OUTPUT" "$GITHUB_ENV"
           PAYLOAD_FILE=${pl_file}
