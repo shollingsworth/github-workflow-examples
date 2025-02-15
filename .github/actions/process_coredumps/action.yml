@@ -1,0 +1,50 @@
+---
+name: Post Processing for Kernel Core Dumps
+description: >-
+  This wraps up handling core dumps / core_dumps if
+  they exist
+
+inputs:
+  crash_dest:
+    description: Where to store crash dumps from containers / runner
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set environment
+      shell: bash
+      id: set_env
+      run: |
+        TS=$(date "+%Y-%m-%d-%s")
+        SUFFIX="${GITHUB_JOB}-${TS}"
+        cat <<EOF >> "$GITHUB_ENV"
+        SUFFIX=${SUFFIX}
+        EOF
+
+    - name: Process CoreDumps
+      shell: bash
+      id: process_core_dumps
+      env:
+        CORE_DUMP_DIR: core_dumps_${{ env.SUFFIX }}
+        CRASH_DEST: ${{ inputs.crash_dest }}
+      run: |
+        echo "Showing Crash/Core Dump files"
+        mkdir -p "${CORE_DUMP_DIR}"
+        find "${CRASH_DEST}" -type f > core_files.txt
+        cat core_files.txt | while read -r fn; do
+          echo "Core dump detected: ${fn}"
+          ls -l "${fn}"
+          echo "Changing file permissions"
+          sudo chmod 0644 "${fn}"
+          sudo chown "${USER}" "${fn}"
+          mv -v "${fn}" "${CORE_DUMP_DIR}"
+        done
+        echo "CORE_DUMP_DIR=${CORE_DUMP_DIR}" >> "$GITHUB_ENV"
+
+    - name: Upload CoreDumps
+      uses: actions/upload-artifact@v4
+      with:
+        name: core_dumps-${{ env.SUFFIX }}
+        path: ${{ env.CORE_DUMP_DIR}}
+        retention-days: 1

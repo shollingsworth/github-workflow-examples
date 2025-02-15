@@ -1,0 +1,101 @@
+---
+name: Authenticate to AWS, CodeArtifact and ECR
+description: Authenticate to a group of AWS Services
+
+inputs:
+  codeartifact_domain:
+    description: CodeArtifact Domain
+    required: true
+
+  codeartifact_repo_name:
+    description: CodeArtifact Repo to log into
+    required: true
+
+  aws_role:
+    description: AWS OIDC Role
+    required: true
+
+  aws_region:
+    description: AWS Region
+    required: true
+
+outputs:
+  ecr_registry:
+    description: ECR Registry
+    value: ${{ steps.login_ecr.outputs.registry }}
+
+  codeartifact_repo_url:
+    description: CodeArtifact repository url
+    value: ${{ steps.codeartifact.outputs.REPOSITORY_URL }}
+
+  codeartifact_token:
+    description: CodeArtifact secret token
+    value: ${{ steps.codeartifact.outputs.CODEARTIFACT_AUTH_TOKEN}}
+
+  codeartifact_http_b64_auth_value:
+    description: >-
+      CodeArtifact base64 encoded CODEARTIFACT_AUTH_TOKEN
+      for use in https request headers
+    value: ${{ steps.codeartifact.outputs.B64_ENC}}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials
+      id: aws_creds
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.aws_role }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - name: Login to Amazon ECR
+      id: login_ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Login to Codeartifact
+      id: codeartifact
+      shell: bash
+      env:
+        REPO: ${{ inputs.codeartifact_repo }}
+        CART_DOMAIN: ${{ inputs.codeartifact_domain }}
+        AWS_ACCOUNT: ${{ steps.aws_creds.aws-account-id }}
+        REGION: ${{ inputs.aws_region }}
+      run: |
+        echo "Logging into codeartifact"
+        aws codeartifact login \
+          --tool pip \
+          --duration-seconds 1800 \
+          --repository "${REPO}" \
+          --domain "${CART_DOMAIN}" \
+          --domain-owner "${AWS_ACCOUNT}" \
+          --region "${REGION}"
+
+        echo "Grabbing CodeArtifac token"
+        CODEARTIFACT_AUTH_TOKEN=$(
+          aws codeartifact get-authorization-token \
+          --domain "${CART_DOMAIN}" \
+          --domain-owner "${AWS_ACCOUNT}" \
+          --duration-seconds 1800 \
+          --region "${REGION}" \
+          --query authorizationToken \
+          --output text
+        )
+        echo "::add-mask::${CODEARTIFACT_AUTH_TOKEN}"
+        B64_ENC="$(echo "aws:${CODEARTIFACT_AUTH_TOKEN}" | base64 -w0)"
+        echo "::add-mask::${B64_ENC}"
+        echo "Grabbing CodeArtifact repo url"
+        REPOSITORY_URL=$(
+          aws codeartifact get-repository-endpoint \
+          --domain "${CART_DOMAIN}" \
+          --domain-owner "${AWS_ACCOUNT}" \
+          --repository "${REPO}" \
+          --region "${REGION}" \
+          --format pypi \
+          --query repositoryEndpoint \
+          --output text
+        )
+        cat <<EOF | tee -a  "$GITHUB_OUTPUT" "$GITHUB_ENV"
+        REPOSITORY_URL=${REPOSITORY_URL}
+        CODEARTIFACT_AUTH_TOKEN=${CODEARTIFACT_AUTH_TOKEN}
+        B64_ENC=${B64_ENC}
+        EOF

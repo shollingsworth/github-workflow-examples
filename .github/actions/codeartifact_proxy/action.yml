@@ -1,0 +1,76 @@
+---
+name: Bring up pypi NGINX Codeartifact proxy
+description: >-
+  Brings up pypi private code artifact proxy
+  so Dockerfile references keep a single url in it's cache
+
+inputs:
+  container_name:
+    description: container name (later used to dump logs)
+    required: true
+
+  local_port:
+    description: local port to listen on
+    default: "8000"
+
+  codeartifact_repository_url:
+    description: Codeartifact repository url
+    required: true
+
+  codeartifact_b64_auth_value:
+    description: Codeartifact https Authorization header value
+    required: true
+
+outputs:
+  local_url:
+    description: Where to send requests
+    value: ${{ steps.nginx_run.outputs.LOCAL_URL}}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Proxy in background
+      id: nginx_run
+      shell: bash
+      env:
+        REPOSITORY_URL: ${{ inputs.codeartifact_repository_url }}
+        B64_ENC: ${{ inputs.codeartifact_b64_auth_value }}
+        PORT: ${{ inputs.local_port }}
+        NGINX_IMAGE: "nginx:stable-alpine"
+        NGINX_CONF_MOUNT_LOCATION: /etc/nginx/nginx.conf
+        SLEEP_SEC: 2
+      run: |
+        echo "Generating nginx.conf"
+        cat <<EOF > ./nginx.conf
+        worker_processes 1;
+        error_log error.log;
+        events {
+            worker_connections 1024;
+        }
+        http {
+            server {
+                listen 8000;
+                location / {
+                    proxy_pass ${REPOSITORY_URL}simple/ ;
+                    proxy_set_header Authorization "Basic ${B64_ENC}" ;
+                }
+            }
+        }
+        EOF
+        echo "Running nginx reverse proxy"
+        docker run --name ${CONT_NAME} \
+            -d \
+            --rm \
+            --volume "$(pwd)/nginx.conf:${NGINX_CONF_MOUNT_LOCATION}:ro" \
+            --network host \
+            "${NGINX_IMAGE}"
+        echo "Sleeping... ${SLEEP_SEC} seconds"
+        sleep "${SLEEP_SEC}"
+        # fail if can't connect to local proxy
+        echo "Running curl test"
+        url="http://127.0.0.1:8000"
+        timeout 10 curl --fail "${url}/status"
+
+        cat <<EOF | tee -a  "$GITHUB_OUTPUT" "$GITHUB_ENV"
+        LOCAL_URL=${url}
+        EOF

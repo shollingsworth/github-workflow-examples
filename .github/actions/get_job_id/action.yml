@@ -1,0 +1,46 @@
+---
+name: Get workflow run job id
+description: Get workflow run job id
+
+outputs:
+  job_id:
+    description: "github workflow run job id"
+    value: ${{ steps.job_id.outputs.job_id }}
+  job_url:
+    description: "github workflow job url"
+    value: ${{ steps.job_id.outputs.job_url }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get Job ID from GH API
+      id: job_id
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        REPO: ${{ github.repository }}
+        RUN_ID: ${{ github.run_id}}
+        ATT: ${{ github.run_attempt }}
+        RUNNER_NAME: ${{ runner.name }}
+      run: |
+        url="repos/${REPO}/actions/runs/${RUN_ID}/attempts/${ATT}/jobs"
+        jobs=$(gh api "${url}")
+        echo
+        echo "JOBS: ${jobs}"
+        echo
+        job_id=$(
+          echo $jobs | \
+          jq -r ".jobs[] | select(.runner_name==\"${RUNNER_NAME}\") | .id" | \
+          tail -n1
+        )
+        echo "JOB ID: ${job_id}"
+        echo "job_id=$job_id" >> $GITHUB_OUTPUT
+
+        # job id does not always show up, in case that happens just
+        # provide the run url
+        base_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+        if [[ "${job_id}" ]]; then
+          echo "job_url=${base_url}/job/${job_id}" >> "$GITHUB_OUTPUT"
+        else
+          echo "job_url=${base_url}/" >> "$GITHUB_OUTPUT"
+        fi

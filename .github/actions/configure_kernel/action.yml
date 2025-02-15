@@ -1,0 +1,48 @@
+---
+name: Runner Kernel Configs
+description: |
+  Should be called after checking out the working branch
+  This configures the ability to handle core dumps in the workflow
+  and other kernel config options
+
+inputs:
+  crash_dest:
+    description: Where to store crash dumps from containers / runner
+    required: true
+
+  core_pattern:
+    default: "core_dump.%e.%p.%t"
+    description: >-
+      Pattern to use for core dumps
+      see https://www.man7.org/linux/man-pages/man5/core.5.html
+
+runs:
+  using: "composite"
+  steps:
+    - name: >-
+        Set core dumps to get stored in ${{ inputs.crash_dest }}
+      shell: bash
+      env:
+        CRASH_DEST: ${{ inputs.crash_dest }}
+        CORE_PATTERN: ${{ inputs.core_pattern }}
+      id: core_kernel_config
+      run: |
+        if [[ ! -d "${CRASH_DEST}" ]]; then
+          echo "Creating crash directory ${CRASH_DEST}"
+          sudo mkdir ${CRASH_DEST}
+        else
+          echo "Crash directory ${CRASH_DEST} exists"
+        fi
+        sudo chmod 0777 ${CRASH_DEST}
+        # Core filenames will be of the form of
+        # core.<job_name>.<executable>.<process id>.<timestamp>
+        CORE_PATTERN="${CRASH_DEST}/${CORE_PATTERN}"
+
+        echo "Setting kernel core_pattern to: ${CORE_PATTERN}"
+
+        sudo bash -c \
+          "echo '${CORE_PATTERN}' > /proc/sys/kernel/core_pattern"
+
+        # Allow core dumps of any size
+        echo "Setting ulimit"
+        ulimit -c unlimited

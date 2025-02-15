@@ -1,0 +1,22 @@
+---
+name: Lint GitHub Actions workflows
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install actionlint
+        id: get_actionlint
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@latest
+
+      - name: Check workflow files
+        run: |
+          actionlint -color -verbose

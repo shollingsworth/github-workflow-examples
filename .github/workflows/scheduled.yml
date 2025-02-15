@@ -1,0 +1,78 @@
+---
+name: Demo Scheduled Task
+run-name: Demo Scheduled Task
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}-scheduled
+  cancel-in-progress: true
+
+on:
+  workflow_dispatch:
+  schedule:
+    # every day at 16:00 Pacific / 00:00 UTC
+    - cron: "0 0 * * *"
+
+jobs:
+  do_stuff:
+    name: Do things and stuff at UTC midnight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: get job id
+        id: job_id
+        uses: ./.github/actions/get_job_id
+
+      - name: Set Env
+        id: set_env
+        env:
+          JOB_ID: ${{ steps.job_id.outputs.job_id }}
+          JOB_URL: ${{ steps.job_id.outputs.job_url }}
+          # see https://app.slack.com/block-kit-builder
+        run: |
+          section_txt=$(cat <<EOF | jq -r -R -s '@json'
+          <${JOB_URL}|Job Run: ${JOB_ID}>
+          This is a mrkdwn section
+          block :ghost:
+          *this is bold*,
+          and ~this is crossed out~
+          EOF
+          )
+          # section_txt is intentionally left unquoted
+          payload=$(
+          cat <<EOF | tee test.json | jq -r .
+          {
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "This is a header block",
+                  "emoji": true
+                }
+              },
+              {
+                "type": "divider"
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": ${section_txt}
+                }
+              }
+            ]
+          }
+          EOF
+          )
+          cat <<EOF | tee -a  "$GITHUB_OUTPUT" "$GITHUB_ENV"
+          PAYLOAD=${payload}
+          EOF
+
+      - name: Send slack alert
+        id: send_slack
+        uses: ./.github/actions/send_slack
+        with:
+          payload_json: ${{ env.PAYLOAD }}

@@ -1,0 +1,72 @@
+---
+name: Sample Pull Request validation job
+run-name: PR Title and Label validation for ${{ github.ref_name }}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - labeled
+      - unlabeled
+
+env:
+  PR_PREFIX: "FOO-"
+
+jobs:
+  pr_validation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify PR title and body
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # save body
+          FAIL_CNT=0
+          echo "${PR_BODY}" > body.txt
+          if [[ "$(grep -F -c '<!--' body.txt)" -ne 0 ]]; then
+            echo "ERROR: Pull Request Description has html comments in it"
+            FAIL_CNT=$((FAIL_CNT + 1))
+          else
+            echo "OK: body does not have html comments"
+          fi
+          echo "Parsing title: '${TITLE}'"
+          if echo "${TITLE}" | grep -E "^${PR_PREFIX}\-[[:digit:]]+:"; then
+            echo "OK: title begins with ${PR_PREFIX}-XXXX:"
+          else
+            FAIL_CNT=$((FAIL_CNT + 1))
+            echo -ne "FAIL: title '${TITLE}' "
+            echo -ne "does not start have the format ${PR_PREFIX}-XXXX: \n"
+            echo -ne "Be sure to make sure it's all capitalized"
+            echo -ne "i.e. '${PR_PREFIX}-555: - Lorem ipsum dolor sit amet...'\n"
+          fi
+          if [[ "${FAIL_CNT}" -ne 0 ]]; then
+            echo -ne "Title:\n${TITLE}\n"
+            echo -ne "Body:\n${PR_BODY}\n"
+            echo "------------------------------------------"
+            echo "pull request validation failed"
+            exit 1
+          fi
+
+      - name: Check if PR has labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const {
+              data: labels
+            } = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber
+            });
+            if (labels.length === 0) {
+              core.setFailed("FAIL: This PR must have at least one label.");
+            }

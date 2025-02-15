@@ -1,0 +1,21 @@
+---
+name: Show Github Environment Variables and Context
+description: Show Github Environment Variables and Context
+
+runs:
+  using: "composite"
+  steps:
+    - name: Show env / github context
+      shell: bash
+      id: show_env
+      env:
+        CONTEXT_OUT: ${{ toJSON(github) }}
+      run: |
+        echo "::group::-------------- GITHUB CONTEXT ------------------"
+        echo "::info::${CONTEXT_OUT}"
+        echo "::endgroup::"
+
+        echo "::group::-------------- ENV VARS ------------------"
+        unset CONTEXT_OUT
+        echo "::info::$(env | sort)"
+        echo "::endgroup"
