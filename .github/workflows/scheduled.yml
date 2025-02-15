@@ -40,56 +40,25 @@ jobs:
         # see https://app.slack.com/block-kit-builder
         run: |
           DT="$(date "+%s")"
-          pl_file="${PAYLOAD_FILE_PREFIX}_${DT}.json"
+          body_file="${PAYLOAD_FILE_PREFIX}_${DT}.txt"
 
           ##############################################
-          # Grab section text
+          # body text
           ##############################################
-          section_txt=$(cat <<EOF | jq -r -R -s '@json'
+          cat <<EOF | tee "${body_file}"
           <${JOB_URL}|Job Run: ${JOB_ID}>
-          This is a mrkdwn section
-          block :ghost:
+          This is a \`mrkdwn\` section block
+          this is a emoji :ghost:
           *this is bold*,
           and ~this is crossed out~
           EOF
-          )
-
-          ##############################################
-          # Save payload to file
-          ##############################################
-          # section_txt is intentionally left unquoted
-          echo "Payload contents:"
-          echo "-------------------------------"
-          cat <<EOF | jq -r . | tee "${pl_file}"
-          {
-            "blocks": [
-              {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": "This is a header block",
-                  "emoji": true
-                }
-              },
-              {
-                "type": "divider"
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": ${section_txt}
-                }
-              }
-            ]
-          }
-          EOF
+          # ^ if you use backticks, escape them
 
           ##############################################
           # Save env vars
           ##############################################
           cat <<EOF | tee -a  "$GITHUB_OUTPUT" "$GITHUB_ENV"
-          PAYLOAD_FILE=${pl_file}
+          BODY_FILE=${body_file}
           EOF
 
       - name: Send slack alert
@@ -97,4 +66,5 @@ jobs:
         uses: ./.github/actions/send_slack
         with:
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
-          payload_file: ${{ env.PAYLOAD_FILE}}
+          title: "Hello from the Demo Scheduled Task!"
+          body_file: ${{ steps.set_env.outputs.BODY_FILE }}

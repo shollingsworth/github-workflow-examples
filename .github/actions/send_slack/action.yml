@@ -6,11 +6,11 @@ inputs:
   slack_webhook:
     description: Slack webhook url
     required: true
-  payload_file:
-    description: >-
-      Slack webhook payload in json format
-      see https://app.slack.com/block-kit-builder
-      example payload file contents '{"text":"Hello, World!"}'
+  title:
+    description: title of slack message
+    required: true
+  body_file:
+    description: Markdown body (plain text file) of slack message
     required: true
 
 runs:
@@ -20,10 +20,12 @@ runs:
       shell: bash
       id: webhook_result
       env:
-        PAYLOAD_FILE: ${{ inputs.payload_file }}
         SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
+        TITLE: ${{ inputs.title }}
+        BODY_FILE: ${{ inputs.body_file}}
       run: |
-        curl -X POST \
-          -H "Content-type: application/json" \
-          --data "@${PAYLOAD_FILE}" \
-          "${SLACK_WEBHOOK}"
+        body="$(cat "${BODY_FILE}")"
+        ./bin/simple_slack_webhook.py \
+          --title "${TITLE}" \
+          --body "${body}" \
+          --webhook "${SLACK_WEBHOOK}"
