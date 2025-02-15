@@ -12,6 +12,10 @@ on:
     # every day at 16:00 Pacific / 00:00 UTC
     - cron: "0 0 * * *"
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   do_stuff:
     name: Do things and stuff at UTC midnight
@@ -24,8 +28,6 @@ jobs:
       - name: get job id
         id: job_id
         uses: ./.github/actions/get_job_id
-        with:
-          gh_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set Env
         id: set_env

@@ -2,11 +2,6 @@
 name: Get workflow run job id
 description: Get workflow run job id
 
-inputs:
-  gh_token:
-    description: passed github token
-    required: true
-
 outputs:
   job_id:
     description: "github workflow run job id"
@@ -22,7 +17,7 @@ runs:
       id: job_id
       shell: bash
       env:
-        GH_TOKEN: ${{ inputs.gh_token }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         REPO: ${{ github.repository }}
         RUN_ID: ${{ github.run_id}}
         ATT: ${{ github.run_attempt }}
