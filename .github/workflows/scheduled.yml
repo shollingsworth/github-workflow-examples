@@ -36,8 +36,12 @@ jobs:
         # see https://app.slack.com/block-kit-builder
         run: |
           DT="$(date "+%s")"
-          section_txt=$(cat <<EOF | jq -r -R -s '@json'
           pl_file="${PAYLOAD_FILE_PREFIX}_${DT}.json"
+
+          ##############################################
+          # Grab section text
+          ##############################################
+          section_txt=$(cat <<EOF | jq -r -R -s '@json'
           <${JOB_URL}|Job Run: ${JOB_ID}>
           This is a mrkdwn section
           block :ghost:
@@ -45,6 +49,10 @@ jobs:
           and ~this is crossed out~
           EOF
           )
+
+          ##############################################
+          # Save payload to file
+          ##############################################
           # section_txt is intentionally left unquoted
           echo "Payload contents:"
           echo "-------------------------------"
@@ -73,6 +81,9 @@ jobs:
           }
           EOF
 
+          ##############################################
+          # Save env vars
+          ##############################################
           cat <<EOF | tee -a  "$GITHUB_OUTPUT" "$GITHUB_ENV"
           PAYLOAD_FILE=${pl_file}
           EOF
