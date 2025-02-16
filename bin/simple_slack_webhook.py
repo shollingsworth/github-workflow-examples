@@ -26,14 +26,15 @@ class ArgsValue(NamedTuple):
     repo: str = os.environ.get("GITHUB_REPOSITORY", "")
 
     @property
-    def slack_run_url(self) -> tuple[str, str] | None:
+    def slack_run_url(self) -> tuple[str, str, str] | None:
         check_run_vals = {
             "run_id": self.run_id,
             "repo": self.repo,
         }
         if self.job_url is not None:
             return (
-                f"Job Run: {self.run_id}/{self.job_id}",
+                "Job Run:",
+                "{self.run_id}/{self.job_id}",
                 self.job_url,
             )
         if not all(check_run_vals.values()):
@@ -49,7 +50,8 @@ class ArgsValue(NamedTuple):
             ]
         )
         return (
-            f"Workflow Run: {self.run_id}",
+            "Workflow Run:",
+            "{self.run_id}",
             url,
         )
 
@@ -73,12 +75,12 @@ class ArgsValue(NamedTuple):
         msgs = []
         # insert link at top if it exists
         if self.slack_run_url is not None:
-            link_title, link_url = self.slack_run_url
-            msgs.append(f"<{link_url}| {link_title}>")
+            prefix, link_title, link_url = self.slack_run_url
+            msgs.append(f"{prefix} <{link_url}| {link_title}>")
         # insert actor
         if self.actor is not None:
             msgs.append(
-                f"Run Actor: <https://github.com/{self.actor} | @{self.actor}"
+                f"Run Actor: <https://github.com/{self.actor} | @{self.actor}>"
             )
 
         if msgs:
