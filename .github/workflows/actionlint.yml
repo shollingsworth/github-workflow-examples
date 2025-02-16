@@ -5,7 +5,11 @@ run-name: Lint GitHub Actions workflows
 on:
   workflow_dispatch:
   push:
+    paths:
+      - ".github/*"
   pull_request:
+    paths:
+      - ".github/*"
 
 jobs:
   actionlint:
