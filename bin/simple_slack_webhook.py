@@ -17,77 +17,99 @@ class ArgsValue(NamedTuple):
     webhook: str
     title: str
     body: str
+    job_url: str | None = None
+    job_id: str | None = None
     actor: str = os.environ.get("GITHUB_ACTOR", "")
     head_ref: str = os.environ.get("GITHUB_HEAD_REF", "")
     job_name: str = os.environ.get("GITHUB_JOB", "")
     run_id: str = os.environ.get("GITHUB_RUN_ID", "")
     repo: str = os.environ.get("GITHUB_REPOSITORY", "")
-    attempt: str = os.environ.get("GITHUB_RUN_ATTEMPT", "")
 
     @property
-    def slack_run_url(self) -> str | None:
-        check_vals = {
+    def slack_run_url(self) -> tuple[str, str] | None:
+        check_run_vals = {
             "run_id": self.run_id,
             "repo": self.repo,
-            "attempt": self.attempt,
         }
-        if not all(check_vals.values()):
+        if self.job_url is not None:
+            return (
+                f"Job Run: {self.run_id}/{self.job_id}",
+                self.job_url,
+            )
+        if not all(check_run_vals.values()):
             LOG.warning(
                 "Could not retreive run_url some values were empty %s",
-                check_vals,
+                check_run_vals,
             )
             return None
+        url = "/".join(
+            [
+                f"<https://github.com{self.repo}/actions/runs",
+                f"{self.run_id}",
+            ]
+        )
         return (
-            "<https://github.com/"
-            f"repos/{self.repo}/actions/runs/"
-            f"{self.run_id}/attempts/${self.attempt}|"
-            f"{self.job_name}:{self.run_id}>"
+            f"Workflow Run: {self.run_id}",
+            url,
         )
 
-
-def get_slack_body(args: ArgsValue) -> bytes:
-    dval = {
-        "blocks": [
-            {
-                "type": "header",
-                "text": {
-                    "type": "plain_text",
-                    "text": args.title,
-                    "emoji": True,
+    def get_slack_body(self) -> bytes:
+        blocks = []
+        blocks.extend(
+            [
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": self.title,
+                        "emoji": True,
+                    },
                 },
-            },
-            {
-                "type": "divider",
-            },
+                {
+                    "type": "divider",
+                },
+            ]
+        )
+        msgs = []
+        # insert link at top if it exists
+        if self.slack_run_url is not None:
+            link_title, link_url = self.slack_run_url
+            msgs.append(f"<{link_url}| {link_title}>")
+        # insert actor
+        if self.actor is not None:
+            msgs.append(
+                f"Run Actor: <https://github.com/{self.actor} | @{self.actor}"
+            )
+
+        if msgs:
+            blocks.append(
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "\n".join(msgs),
+                    },
+                }
+            )
+        blocks.append(
             {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": args.body,
+                    "text": self.body,
                 },
             },
-        ]
-    }
-    if args.slack_run_url:
-        dval["blocks"].append(
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": args.slack_run_url,
-                },
-            }
         )
-    retval = json.dumps(dval, indent=4)
-    LOG.info("Sending:\n%s", retval)
-    return retval.encode()
+        retval = json.dumps({"blocks": blocks}, indent=4)
+        LOG.info("Sending:\n%s", retval)
+        return retval.encode()
 
 
 def process(args: ArgsValue):
     headers = {
         "Content-Type": "application/json",
     }
-    body = get_slack_body(args)
+    body = args.get_slack_body()
     r = request(
         "POST",
         args.webhook,
@@ -141,6 +163,22 @@ def main() -> None:
         "-b",
         help="Markdown Text Body",
         required=True,
+        type=str,
+    )
+    parser.add_argument(
+        "--job-url",
+        "-j",
+        help="Job URL needed (useful for failures)",
+        required=False,
+        default=None,
+        type=str,
+    )
+    parser.add_argument(
+        "--job-id",
+        "-i",
+        help="Job ID",
+        required=False,
+        default=None,
         type=str,
     )
     args = ArgsValue(**parser.parse_args().__dict__)

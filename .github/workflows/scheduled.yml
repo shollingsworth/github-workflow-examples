@@ -25,7 +25,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
 
-      - name: get job id
+      - name: get job id / url
         id: job_id
         uses: ./.github/actions/get_job_id
         with:
@@ -34,8 +34,6 @@ jobs:
       - name: Set Env
         id: set_env
         env:
-          JOB_ID: ${{ steps.job_id.outputs.job_id }}
-          JOB_URL: ${{ steps.job_id.outputs.job_url }}
           PAYLOAD_FILE_PREFIX: /tmp/slack_payload
         # see https://app.slack.com/block-kit-builder
         run: |
@@ -46,7 +44,6 @@ jobs:
           # body text
           ##############################################
           cat <<EOF | tee "${body_file}"
-          <${JOB_URL}|Job Run: ${JOB_ID}>
           This is a \`mrkdwn\` section block
           this is a emoji :ghost:
           *this is bold*,
@@ -68,3 +65,5 @@ jobs:
           slack_webhook: ${{ secrets.SLACK_WEBHOOK }}
           title: "Hello from the Demo Scheduled Task!"
           body_file: ${{ steps.set_env.outputs.BODY_FILE }}
+          job_url: ${{ steps.job_id.outputs.job_url }}
+          job_id: ${{ steps.job_id.outputs.job_id }}

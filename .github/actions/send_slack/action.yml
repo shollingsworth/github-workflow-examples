@@ -12,6 +12,14 @@ inputs:
   body_file:
     description: Markdown body (plain text file) of slack message
     required: true
+  job_url:
+    description: Job URL
+    default: ""
+    required: false
+  job_id:
+    description: Job ID
+    default: ""
+    required: false
 
 runs:
   using: "composite"
@@ -23,9 +31,16 @@ runs:
         SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
         TITLE: ${{ inputs.title }}
         BODY_FILE: ${{ inputs.body_file}}
+        JOB_URL: ${{ inputs.job_url}}
+        JOB_ID: ${{ inputs.job_id}}
       run: |
+        args=()
+        if [[ "${JOB_URL}" && "${JOB_ID}" ]]; then
+          args=(--job-url "${JOB_URL}" --job-id "${JOB_ID}")
+        fi
         body="$(cat "${BODY_FILE}")"
         ./bin/simple_slack_webhook.py \
           --title "${TITLE}" \
           --body "${body}" \
-          --webhook "${SLACK_WEBHOOK}"
+          --webhook "${SLACK_WEBHOOK}" \
+          "${args[@]}"
