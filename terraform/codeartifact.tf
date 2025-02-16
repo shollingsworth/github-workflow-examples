@@ -33,3 +33,12 @@ resource "aws_codeartifact_repository" "private" {
     }
   }
 }
+
+output "codeartifact" {
+  value = {
+    base_repo         = aws_codeartifact_repository.private.repository
+    base_arn          = aws_codeartifact_repository.private.arn
+    package_repo_arn  = aws_codeartifact_repository.python_package.arn
+    package_repo_name = aws_codeartifact_repository.python_package.repository
+  }
+}
