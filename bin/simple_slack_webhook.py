@@ -34,7 +34,7 @@ class ArgsValue(NamedTuple):
         if self.job_url is not None:
             return (
                 "Job Run:",
-                "{self.run_id}/{self.job_id}",
+                f"{self.run_id}/{self.job_id}",
                 self.job_url,
             )
         if not all(check_run_vals.values()):
